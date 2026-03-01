@@ -12,6 +12,7 @@ body {
   font-family: Arial, sans-serif;
 }
 
+/* GAME */
 #game {
   width: 100vw;
   height: 100vh;
@@ -29,7 +30,6 @@ body {
   height: 32px;
   background: url('bird-icon.png') no-repeat center;
   background-size: contain;
-  z-index: 3;
 }
 
 /* Pipes */
@@ -37,7 +37,6 @@ body {
   position: absolute;
   width: 70px;
   background: #2ecc71;
-  z-index: 2;
 }
 .top { top: 0; }
 .bottom { bottom: 0; }
@@ -49,7 +48,6 @@ body {
   text-align: center;
   color: white;
   text-shadow: 2px 2px 4px #000;
-  z-index: 5;
 }
 
 #score { top: 20px; font-size: 28px; }
@@ -61,16 +59,15 @@ body {
   top: 50%;
   width: 100%;
   text-align: center;
-  z-index: 10;
 }
 
 #retry button {
   font-size: 20px;
   padding: 12px 26px;
-  cursor: pointer;
 }
 
-#scam {
+/* SCAM SCREEN */
+#scam, #blocked {
   display: none;
   width: 100vw;
   height: 100vh;
@@ -99,10 +96,23 @@ body {
   <p>This game looked real.</p>
   <p>Scams also look real.</p>
   <p><b>Stop. Think. Verify.</b></p>
-  <p>Never trust unknown links, numbers, or offers.</p>
+  <p>Never trust unknown links, offers, or numbers.</p>
+</div>
+
+<div id="blocked">
+  <h1>🚫 ACCESS DENIED</h1>
+  <p>You have already completed this awareness experience.</p>
+  <p>The lesson stays. Stay safe online.</p>
 </div>
 
 <script>
+/* 🔐 ONE-TIME CHECK */
+if (localStorage.getItem("hasPlayed") === "true") {
+  document.getElementById("game").style.display = "none";
+  document.getElementById("blocked").style.display = "block";
+}
+
+/* VARIABLES */
 const bird = document.getElementById("bird");
 const game = document.getElementById("game");
 const retryBox = document.getElementById("retry");
@@ -113,24 +123,21 @@ const gravity = 0.6;
 
 let running = false;
 let roundOver = false;
+let lossCount = 0;
 
 let score = 0;
-let lossCount = 0; // 🔥 IMPORTANT
-
 let pipes = [];
-let gameLoopInterval;
-let pipeInterval;
+let gameLoop, pipeLoop;
 
 /* START GAME */
 function startGame() {
   roundOver = false;
   running = true;
-
   document.getElementById("ready").style.display = "none";
   retryBox.style.display = "none";
 
-  gameLoopInterval = setInterval(gameLoop, 20);
-  pipeInterval = setInterval(createPipe, 2600);
+  gameLoop = setInterval(loop, 20);
+  pipeLoop = setInterval(createPipe, 2600);
 }
 
 /* FLAP */
@@ -140,30 +147,28 @@ function flap() {
   velocity = -7;
 }
 
-/* KEYBOARD */
 document.addEventListener("keydown", e => {
   if (e.code === "Space" || e.code === "ArrowUp") flap();
 });
 
-/* MOBILE TOUCH */
 game.addEventListener("touchstart", e => {
   if (retryBox.style.display === "block") return;
   e.preventDefault();
   flap();
 }, { passive: false });
 
-/* GAME LOOP */
-function gameLoop() {
+/* LOOP */
+function loop() {
   if (!running) return;
 
   velocity += gravity;
   birdY += velocity;
   bird.style.top = birdY + "px";
 
-  const birdRect = bird.getBoundingClientRect();
-  const gameRect = game.getBoundingClientRect();
+  const birdR = bird.getBoundingClientRect();
+  const gameR = game.getBoundingClientRect();
 
-  if (birdRect.top <= gameRect.top || birdRect.bottom >= gameRect.bottom) {
+  if (birdR.top <= gameR.top || birdR.bottom >= gameR.bottom) {
     endRound();
     return;
   }
@@ -173,14 +178,12 @@ function gameLoop() {
     p.top.style.left = p.x + "px";
     p.bottom.style.left = p.x + "px";
 
-    if (
-      overlap(birdRect, p.top.getBoundingClientRect()) ||
-      overlap(birdRect, p.bottom.getBoundingClientRect())
-    ) {
+    if (hit(birdR, p.top.getBoundingClientRect()) ||
+        hit(birdR, p.bottom.getBoundingClientRect())) {
       endRound();
     }
 
-    if (!p.passed && p.x + 70 < birdRect.left) {
+    if (!p.passed && p.x + 70 < birdR.left) {
       p.passed = true;
       score++;
       document.getElementById("score").innerText = `Score: ${score}`;
@@ -189,7 +192,7 @@ function gameLoop() {
 }
 
 /* COLLISION */
-function overlap(a, b) {
+function hit(a, b) {
   return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
 }
 
@@ -197,17 +200,16 @@ function overlap(a, b) {
 function createPipe() {
   const gap = 180;
   const h = game.clientHeight;
-  const topHeight = Math.random() * 200 + 80;
-  const bottomHeight = h - topHeight - gap;
+  const topH = Math.random() * 200 + 80;
+  const botH = h - topH - gap;
 
   const top = document.createElement("div");
   const bottom = document.createElement("div");
 
   top.className = "pipe top";
   bottom.className = "pipe bottom";
-
-  top.style.height = topHeight + "px";
-  bottom.style.height = bottomHeight + "px";
+  top.style.height = topH + "px";
+  bottom.style.height = botH + "px";
 
   game.appendChild(top);
   game.appendChild(bottom);
@@ -221,19 +223,18 @@ function endRound() {
   roundOver = true;
   running = false;
 
-  clearInterval(gameLoopInterval);
-  clearInterval(pipeInterval);
+  clearInterval(gameLoop);
+  clearInterval(pipeLoop);
 
+  lossCount++;
   score = 0;
   document.getElementById("score").innerText = "Score: 0";
 
-  lossCount++; // 🔥 count loss
-
   if (lossCount === 1) {
-    // First loss → allow retry
     retryBox.style.display = "block";
   } else {
-    // Second loss → scam message
+    /* 🔒 LOCK FOREVER */
+    localStorage.setItem("hasPlayed", "true");
     game.style.display = "none";
     document.getElementById("scam").style.display = "block";
   }
