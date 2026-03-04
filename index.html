@@ -30,6 +30,7 @@ body {
   height: 32px;
   background: url('bird-icon.png') no-repeat center;
   background-size: contain;
+  z-index: 5;
 }
 
 /* Pipes */
@@ -37,6 +38,7 @@ body {
   position: absolute;
   width: 70px;
   background: #2ecc71;
+  z-index: 1;
 }
 .top { top: 0; }
 .bottom { bottom: 0; }
@@ -48,6 +50,7 @@ body {
   text-align: center;
   color: white;
   text-shadow: 2px 2px 4px #000;
+  z-index: 10;
 }
 
 #score { top: 20px; font-size: 28px; }
@@ -59,6 +62,7 @@ body {
   top: 50%;
   width: 100%;
   text-align: center;
+  z-index: 20;
 }
 
 #retry button {
@@ -236,7 +240,6 @@ function endRound() {
   if (lossCount === 1) {
     retryBox.style.display = "block";
   } else {
-    /* 🔒 LOCK FOREVER */
     localStorage.setItem("hasPlayed", "true");
     game.style.display = "none";
     document.getElementById("scam").style.display = "block";
@@ -261,4 +264,3 @@ function retryRound() {
 
 </body>
 </html>
-
